@@ -149,15 +149,12 @@ class Sound_Data:
 
 
 
-counter = 0
 
 for file in os.listdir(DIRECTORY):
 
-    if counter < 3:
-        counter += 1
 
-        filename = os.fsdecode(file)[:-4]
-        new_alignment = Sound_Data(filename)
-        #print(filename)
-        #print(new_alignment.get_names())
-        print(new_alignment.get_important_times())
+    filename = os.fsdecode(file)[:-4]
+    new_alignment = Sound_Data(filename)
+    #print(filename)
+    #print(new_alignment.get_names())
+    print(new_alignment.get_important_times())
