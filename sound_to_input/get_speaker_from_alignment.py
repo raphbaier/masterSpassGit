@@ -6,7 +6,6 @@ DIRECTORY = os.fsencode(DIRECTORY_NAME_TRANSCRIPTS)
 
 DIRECTORY_NAME_ALIGNMENTS = "../forced_alignment/alignments/"
 
-
 counter = 1
 
 #the possible titles of the list of names of company members
