@@ -139,6 +139,7 @@ class Sound_Data:
                         in_important_time = False
             counter += 1
         #print(self.important_times)
+        print("Hallo Feli")
 
     def get_names(self):
         return self.names
