@@ -248,7 +248,7 @@ class Sound_Data:
 counter = 0
 for file in os.listdir(DIRECTORY):
     #sonntag, 19:25 gestartet für 300
-    if counter < 300:
+    if counter < 600:
         filename = os.fsdecode(file)[:-4]
         new_alignment = Sound_Data(filename)
         print(DIRECTORY_NAME_MP3 + filename + ".mp3")
