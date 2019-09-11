@@ -9,6 +9,8 @@ from sklearn import linear_model, datasets, svm, mixture, preprocessing, metrics
 # Load the feature data file
 features_file_path = "arffs/A-2018-Q3.arff"
 test_features_file_path = "arffs/A-2018-Q3TEST.arff"
+features_file_path = "arffs/0.arff"
+test_features_file_path = "arffs/1.arff"
 with open(features_file_path) as fh:
     features_data = arff.load(fh)
 fh.close()

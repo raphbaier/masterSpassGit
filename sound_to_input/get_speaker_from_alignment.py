@@ -183,7 +183,8 @@ class Sound_Data:
                         while self.alignment['words'][counter_timestamp]['case'] != "success":
                             counter_timestamp -= 1
                         important_time.append(self.alignment['words'][counter_timestamp]['end'])
-                        self.important_times.append(important_time)
+                        if len(important_time) == 2:
+                            self.important_times.append(important_time)
                         important_time = []
                     #we start a new important time
                     #start current time: go forward to the newest timestamp
@@ -222,7 +223,8 @@ class Sound_Data:
                         while self.alignment['words'][counter_timestamp]['case'] != "success":
                             counter_timestamp -= 1
                         important_time.append(self.alignment['words'][counter_timestamp]['end'])
-                        self.important_times.append(important_time)
+                        if len(important_time) == 2:
+                            self.important_times.append(important_time)
                         important_time = []
                         in_important_time = False
             counter += 1
@@ -248,7 +250,7 @@ class Sound_Data:
 counter = 0
 for file in os.listdir(DIRECTORY):
     #sonntag, 19:25 gestartet für 300
-    if counter < 600:
+    if counter < 11600:
         filename = os.fsdecode(file)[:-4]
         new_alignment = Sound_Data(filename)
         print(DIRECTORY_NAME_MP3 + filename + ".mp3")
