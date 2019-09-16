@@ -3,9 +3,14 @@ import tensorflow as tf
 import arff
 import numpy as np
 from sklearn import linear_model, datasets, svm, mixture, preprocessing, metrics
+import os, os.path
+import random
 
-#was wir am arff noch ändern müssen: class zu emotion, numeric zu {lower, higher} ganz hinten dann die class die 0.0 war zu ner emotion, also bspw lower
+#for testing
+from time import sleep
 
+
+ARFF_FILES_PATH = "../../one_arff_with_label/"
 
 # Load the feature data file
 features_file_path = "arffs/A-2018-Q3.arff"
@@ -18,6 +23,48 @@ fh.close()
 with open(test_features_file_path) as fh:
     test_features_data = arff.load(fh)
 fh.close()
+
+
+### Load training and test data ###
+#Get number of earnings talks
+talks_number = len([name for name in os.listdir(ARFF_FILES_PATH)])
+#Load indices for all arffs and shuffle them
+talks_arff = []
+indices_of_talks = list(range(0, talks_number))
+random.shuffle(indices_of_talks)
+print(indices_of_talks)
+#assign indices to training and testing data
+split_point = round(talks_number*2/3)
+train_indices = indices_of_talks[:split_point]
+test_indices = indices_of_talks[split_point:]
+
+
+#get THREE for the training data
+def load_arffs_from_disk(number_arffs, index_list):
+    random.shuffle(index_list)
+    train_arffs = []
+    counter = 0
+    for file in os.listdir(ARFF_FILES_PATH):
+        if counter in index_list[:number_arffs]:
+            if train_arffs != []:
+                with open(ARFF_FILES_PATH + file) as fh:
+                    loaded = arff.load(fh)
+                    train_arffs["data"] += loaded["data"]
+                fh.close()
+            else:
+                with open(ARFF_FILES_PATH + file) as fh:
+                    train_arffs = arff.load(fh)
+                fh.close()
+        counter += 1
+    return train_arffs
+
+
+
+features_data = load_arffs_from_disk(5, train_indices)
+test_features_data = load_arffs_from_disk(5, test_indices)
+
+#sleep(5)
+
 
 #features_data = arff.load(open(features_file_path, 'rb'))
 
@@ -44,8 +91,6 @@ def get_feature_indices(feature_names):
     print(feature_names)
     feature_indices = []
     for feature_name in feature_names:
-        print("Name: " + feature_name)
-        print(features_data)
         feature_indices.append(
             [index for index, feature in enumerate(features_data['attributes']) if feature[0] == feature_name][0]
         )
@@ -80,7 +125,7 @@ y_train_np = np.array(y_train_numeric)
 # Parameters
 learning_rate = 0.0001
 training_epochs = 9000
-training_epochs = 100
+training_epochs = 5
 batch_size = 1
 display_step = 10
 
@@ -101,6 +146,13 @@ y = tf.placeholder("float", [None, n_classes])
 #np.random.seed(10)
 
 def next_batch(batch_size):
+
+    #FUER TESTZWECKE
+
+
+
+
+
     shuffle_indices = np.random.permutation(np.arange(len(x_train_np)))
     x_shuffled = x_train_np[shuffle_indices]
     y_shuffled = y_train_np[shuffle_indices]
