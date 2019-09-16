@@ -1,4 +1,5 @@
 import tensorflow as tf
+#not standard arff, this is LIAC-arff!!!
 import arff
 import numpy as np
 from sklearn import linear_model, datasets, svm, mixture, preprocessing, metrics
@@ -9,8 +10,8 @@ from sklearn import linear_model, datasets, svm, mixture, preprocessing, metrics
 # Load the feature data file
 features_file_path = "arffs/A-2018-Q3.arff"
 test_features_file_path = "arffs/A-2018-Q3TEST.arff"
-features_file_path = "arffs/0.arff"
-test_features_file_path = "arffs/1.arff"
+features_file_path = "../../one_arff_with_label/A-2018-Q3.arff"
+test_features_file_path = "../../one_arff_with_label/A-2018-Q4.arff"
 with open(features_file_path) as fh:
     features_data = arff.load(fh)
 fh.close()
@@ -40,9 +41,11 @@ def emotion_to_class_tensor(emotion):
 def get_feature_indices(feature_names):
     # print(feature_names)
     # print(features_data)
+    print(feature_names)
     feature_indices = []
     for feature_name in feature_names:
         print("Name: " + feature_name)
+        print(features_data)
         feature_indices.append(
             [index for index, feature in enumerate(features_data['attributes']) if feature[0] == feature_name][0]
         )
@@ -77,8 +80,9 @@ y_train_np = np.array(y_train_numeric)
 # Parameters
 learning_rate = 0.0001
 training_epochs = 9000
+training_epochs = 100
 batch_size = 1
-display_step = 1
+display_step = 10
 
 # Network parameters
 n_hidden_1 = 512 # 1st layer number of features
@@ -99,9 +103,6 @@ y = tf.placeholder("float", [None, n_classes])
 def next_batch(batch_size):
     shuffle_indices = np.random.permutation(np.arange(len(x_train_np)))
     x_shuffled = x_train_np[shuffle_indices]
-    print(shuffle_indices)
-    print(y_train_np)
-    print(x_train)
     y_shuffled = y_train_np[shuffle_indices]
     return x_shuffled[:batch_size], y_shuffled[:batch_size]
 

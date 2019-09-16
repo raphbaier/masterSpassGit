@@ -8,7 +8,7 @@ import shutil
 
 DIRECTORY_ARFFS = "/media/raphael/MasterSpass/masterSpass/wav/"
 DIRECTORY_TRANSCRIPTS = "/media/raphael/MasterSpass/masterSpass/scrape/transcripts/"
-DIRECTORY_TO_SAVE = "/media/raphael/MasterSpass/masterSpass/arff_with_label/"
+DIRECTORY_TO_SAVE = "/media/raphael/MasterSpass/masterSpass/one_arff_with_label/"
 
 #how many days before the earnings talk do we look?
 #how many days after the earnings talk do we look?
@@ -17,8 +17,6 @@ DAYS_BEFORE = 2
 DAYS_AFTER = 2
 
 
-data = yf.download('AAPL','2018-01-01','2018-01-08')
-print(data)
 
 for file in os.listdir(DIRECTORY_ARFFS):
     stock_name = file.split("-")[0]
@@ -48,26 +46,32 @@ for file in os.listdir(DIRECTORY_ARFFS):
                     emotion = "lower"
                     if stock_growth > 0:
                         emotion = "higher"
-                    new_dir = DIRECTORY_TO_SAVE + file + "/"
+                    new_dir = DIRECTORY_TO_SAVE + file + ".arff"
 
-                    if not os.path.isdir(new_dir):
-                    #if os.path.isdir(new_dir):
-                    #    shutil.rmtree(new_dir)
-                        os.mkdir(new_dir)
-
+                    if not os.path.isfile(new_dir):
                         arff_dir = DIRECTORY_ARFFS + file + "/" + "arff/"
+                        first_file = True
+
+
                         for arff_file in os.listdir(arff_dir):
                             with open(arff_dir + arff_file) as sub_file:
-                                sub_file_with_stock = open(new_dir + arff_file, "w+")
-                                for line in sub_file.readlines():
-                                    if line == "@attribute class numeric\n":
-                                        sub_file_with_stock.write("@attribute emotion {lower, higher}\n")
-                                    elif line[0:7] == "\'noname":
-                                        sub_file_with_stock.write(line[:-4] + emotion + "\n")
-                                    else:
-                                        sub_file_with_stock.write(line)
-                                sub_file_with_stock.close()
+                                if first_file:
+                                    sub_file_with_stock = open(new_dir, "w+")
+                                    for line in sub_file.readlines():
+                                        if line == "@attribute class numeric\n":
+                                            sub_file_with_stock.write("@attribute emotion {lower, higher}\n")
+                                        elif line[0:7] == "\'noname":
+                                            sub_file_with_stock.write(line[:-4] + emotion + "\n")
+                                        else:
+                                            sub_file_with_stock.write(line)
+                                    sub_file_with_stock.close()
+                                else:
+                                    sub_file_with_stock = open(new_dir, "a")
+                                    for line in sub_file.readlines():
+                                        if line[0:7] == "\'noname":
+                                            sub_file_with_stock.write(line[:-4] + emotion + "\n")
                             sub_file.close()
+                            first_file = False
 
             except KeyError:
                 print("Couldn't find symbol.")

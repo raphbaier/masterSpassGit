@@ -70,9 +70,10 @@ def get_important_names_from_transcript(transcript):
                 if not names_list_filled:
                     if line != '\n':
                         name_to_add = line.split('-')[0]
-                        if name_to_add[-1] == ' ':
-                            name_to_add = name_to_add[:-1]
-                        list_of_unimportant_names.append(name_to_add)
+                        if len(name_to_add) > 0:
+                            if name_to_add[-1] == ' ':
+                                name_to_add = name_to_add[:-1]
+                            list_of_unimportant_names.append(name_to_add)
 
             else:
                 for name in IMPORTANT_NAMES:
