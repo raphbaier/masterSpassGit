@@ -6,8 +6,13 @@ from sklearn import linear_model, datasets, svm, mixture, preprocessing, metrics
 import os, os.path
 import random
 
+from feature_extraction import extract_features
+
 #for testing
 from time import sleep
+
+
+NUMBER_ARFFS_IN_BATCH = 3
 
 
 ARFF_FILES_PATH = "../../one_arff_with_label/"
@@ -39,7 +44,7 @@ train_indices = indices_of_talks[:split_point]
 test_indices = indices_of_talks[split_point:]
 
 
-#get THREE for the training data
+#load data
 def load_arffs_from_disk(number_arffs, index_list):
     random.shuffle(index_list)
     train_arffs = []
@@ -60,8 +65,8 @@ def load_arffs_from_disk(number_arffs, index_list):
 
 
 
-features_data = load_arffs_from_disk(5, train_indices)
-test_features_data = load_arffs_from_disk(5, test_indices)
+features_data = load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices)
+test_features_data = load_arffs_from_disk(22, test_indices)
 
 #sleep(5)
 
@@ -70,9 +75,13 @@ test_features_data = load_arffs_from_disk(5, test_indices)
 
 
 # list of features to test model
-features = [
-    'pcm_loudness_sma_upleveltime90', 'logMelFreqBand_sma_de[2]_upleveltime75', 'pcm_fftMag_mfcc_sma[0]_maxPos'
-]
+#features = [
+#    'pcm_loudness_sma_upleveltime90', 'logMelFreqBand_sma_de[2]_upleveltime75', 'pcm_fftMag_mfcc_sma[0]_maxPos'
+#]
+
+print(extract_features.helloWorld())
+
+features = extract_features.get_features_from_arff(features_data)
 
 #the classes: lower and higher
 emotions = [
@@ -122,12 +131,22 @@ y_test_numeric = list(map(lambda x: emotion_to_class_tensor(x), y_test))
 x_train_np = np.array(x_train)
 y_train_np = np.array(y_train_numeric)
 
+
+#länge x_train is pro arff so 600. nach jeder batchsize holen wir a komplett neues arff set. also am besten setzen wir batchsize
+#später halt auf länge von x_train.
+print("BATCHSIZE")
+print(len(x_train))
+
 # Parameters
 learning_rate = 0.0001
+learning_rate = 0.00001
 training_epochs = 9000
-training_epochs = 5
-batch_size = 1
-display_step = 10
+training_epochs = 7000
+
+#wie oben gesagt...
+batch_size = 1200
+
+display_step = 1
 
 # Network parameters
 n_hidden_1 = 512 # 1st layer number of features
@@ -148,6 +167,13 @@ y = tf.placeholder("float", [None, n_classes])
 def next_batch(batch_size):
 
     #FUER TESTZWECKE
+    features_data = load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices)
+    x_train, y_train = create_limited_feature_vector(features_data['data'], feature_indices, label_index)
+
+    y_train_numeric = list(map(lambda x: emotion_to_class_tensor(x), y_train))
+
+    x_train_np = np.array(x_train)
+    y_train_np = np.array(y_train_numeric)
 
 
 
