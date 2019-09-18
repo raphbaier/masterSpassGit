@@ -8,14 +8,20 @@ import random
 
 from feature_extraction import extract_features
 
+
 #for testing
 from time import sleep
 
 
-NUMBER_ARFFS_IN_BATCH = 3
+NUMBER_ARFFS_IN_BATCH = 2
 
 
 ARFF_FILES_PATH = "../../one_arff_with_label/"
+
+ARFF_FILES_PATH_SORTED_HIGHER = "../../one_arff_with_label_sorted/higher/"
+ARFF_FILES_PATH_SORTED_LOWER = "../../one_arff_with_label_sorted/lower/"
+
+
 
 # Load the feature data file
 features_file_path = "arffs/A-2018-Q3.arff"
@@ -32,32 +38,39 @@ fh.close()
 
 ### Load training and test data ###
 #Get number of earnings talks
-talks_number = len([name for name in os.listdir(ARFF_FILES_PATH)])
+talks_number_lower = len([name for name in os.listdir(ARFF_FILES_PATH_SORTED_LOWER)])
+talks_number_higher = len([name for name in os.listdir(ARFF_FILES_PATH_SORTED_HIGHER)])
 #Load indices for all arffs and shuffle them
-talks_arff = []
-indices_of_talks = list(range(0, talks_number))
-random.shuffle(indices_of_talks)
-print(indices_of_talks)
-#assign indices to training and testing data
-split_point = round(talks_number*2/3)
-train_indices = indices_of_talks[:split_point]
-test_indices = indices_of_talks[split_point:]
+indices_of_talks_lower = list(range(0, talks_number_lower))
+indices_of_talks_higher = list(range(0, talks_number_higher))
 
+random.shuffle(indices_of_talks_lower)
+random.shuffle(indices_of_talks_higher)
+
+#assign indices to training and testing data
+split_point_lower = round(talks_number_lower*3/4)
+split_point_higher = round(talks_number_higher*3/4)
+
+
+train_indices_lower = indices_of_talks_lower[:split_point_lower]
+train_indices_higher = indices_of_talks_higher[:split_point_higher]
+test_indices_lower = indices_of_talks_lower[split_point_lower:]
+test_indices_higher = indices_of_talks_higher[split_point_higher:]
 
 #load data
-def load_arffs_from_disk(number_arffs, index_list):
+def load_arffs_from_disk(number_arffs, index_list, path):
     random.shuffle(index_list)
     train_arffs = []
     counter = 0
-    for file in os.listdir(ARFF_FILES_PATH):
+    for file in os.listdir(path):
         if counter in index_list[:number_arffs]:
             if train_arffs != []:
-                with open(ARFF_FILES_PATH + file) as fh:
+                with open(path + file) as fh:
                     loaded = arff.load(fh)
                     train_arffs["data"] += loaded["data"]
                 fh.close()
             else:
-                with open(ARFF_FILES_PATH + file) as fh:
+                with open(path + file) as fh:
                     train_arffs = arff.load(fh)
                 fh.close()
         counter += 1
@@ -65,8 +78,11 @@ def load_arffs_from_disk(number_arffs, index_list):
 
 
 
-features_data = load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices)
-test_features_data = load_arffs_from_disk(22, test_indices)
+features_data = load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices_lower, ARFF_FILES_PATH_SORTED_LOWER)
+features_data["data"] += load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices_higher, ARFF_FILES_PATH_SORTED_HIGHER)["data"]
+
+test_features_data = load_arffs_from_disk(11, test_indices_lower, ARFF_FILES_PATH_SORTED_LOWER)
+test_features_data["data"] += load_arffs_from_disk(11, test_indices_higher, ARFF_FILES_PATH_SORTED_HIGHER)["data"]
 
 #sleep(5)
 
@@ -139,9 +155,9 @@ print(len(x_train))
 
 # Parameters
 learning_rate = 0.0001
-learning_rate = 0.00001
+#learning_rate = 0.00001
 training_epochs = 9000
-training_epochs = 7000
+training_epochs = 1000
 
 #wie oben gesagt...
 batch_size = 1200
@@ -153,6 +169,16 @@ n_hidden_1 = 512 # 1st layer number of features
 n_hidden_2 = 512 # 2nd layer number of features
 n_hidden_3 = 580 # 3rd layer
 n_hidden_4 = 16
+
+
+n_hidden_1 = 1024
+n_hidden_2 = 1024
+n_hidden_3 = 1160
+n_hidden_4 = 1024
+
+
+
+
 n_input = len(x_train[0]) # data input
 dropout = 0.7
 
@@ -167,7 +193,9 @@ y = tf.placeholder("float", [None, n_classes])
 def next_batch(batch_size):
 
     #FUER TESTZWECKE
-    features_data = load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices)
+    features_data = load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices_lower, ARFF_FILES_PATH_SORTED_LOWER)
+    features_data["data"] += load_arffs_from_disk(NUMBER_ARFFS_IN_BATCH, train_indices_higher, ARFF_FILES_PATH_SORTED_HIGHER)["data"]
+
     x_train, y_train = create_limited_feature_vector(features_data['data'], feature_indices, label_index)
 
     y_train_numeric = list(map(lambda x: emotion_to_class_tensor(x), y_train))
@@ -196,16 +224,19 @@ def multilayer_perceptron(x, weights, biases):
     layer_2 = tf.nn.relu(layer_2)
     #layer_2 = tf.nn.dropout(layer_2, dropout)
 
+
+    ###ab hier war nix mehr
     # Hidden layer with RELU activation
-    #layer_3 = tf.add(tf.matmul(layer_2, weights['h3']), biases['b3'])
-    #layer_3 = tf.nn.relu(layer_3)
+    layer_3 = tf.add(tf.matmul(layer_2, weights['h3']), biases['b3'])
+    layer_3 = tf.nn.relu(layer_3)
 
     # Hidden layer with RELI activation
-    #layer_4 = tf.add(tf.matmul(layer_3, weights['h4']), biases['b4'])
-    #layer_4 = tf.nn.relu(layer_4)
+    layer_4 = tf.add(tf.matmul(layer_3, weights['h4']), biases['b4'])
+    layer_4 = tf.nn.relu(layer_4)
 
     # Output layer with linear activation
-    out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
+    #out_layer = tf.matmul(layer_2, weights['out']) + biases['out'] #original
+    out_layer = tf.matmul(layer_4, weights['out']) + biases['out']
     return out_layer
 
 # Store layers weight & bias
