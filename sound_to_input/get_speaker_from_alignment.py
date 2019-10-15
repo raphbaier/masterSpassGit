@@ -14,12 +14,12 @@ DIRECTORY_NAME_ALIGNMENTS = "/media/raphael/MasterSpass/masterSpass/forced_align
 DIRECTORY_NAME_MP3 = "/media/raphael/MasterSpass/masterSpass/mp3/"
 
 
-DIRECTORY_NAME_OUTPUT = "/media/raphael/MasterSpass/masterSpass/wav/"
+DIRECTORY_NAME_OUTPUT = "/media/raphael/MasterSpass/masterSpass/wav_words/"
 
 
 DIRECTORY = os.fsencode(DIRECTORY_NAME_MP3)
 
-# length of a sound segment in miliseconds
+# length of a sound segment in miliseconds in case we worked with fixed segment length
 SEGMENT_LENGTH = 5000
 
 counter = 1
@@ -101,6 +101,9 @@ class Sound_Data:
 
 
         self.important_times = []
+
+        self.word_boundaries = []
+
         in_important_time = False
         important_time = []
 
@@ -120,6 +123,9 @@ class Sound_Data:
 
         false_words_counter = 0
         for word in self.alignment['words']:
+
+
+
             transcrib_word = word['word']
 
             #get current position in transcript
@@ -152,6 +158,17 @@ class Sound_Data:
                     #print(transcrib_word)
             else:
                 all_words_in_alignment.append(word)
+
+                # write the start and end time of a word into the word boundaries list
+                if self.alignment['words'][counter]['case'] == "success":
+                    word_time = []
+                    word_time.append(self.alignment['words'][counter]['start'])
+                    word_time.append(self.alignment['words'][counter]['end'])
+
+                    self.word_boundaries.append(word_time)
+
+
+
 
                 #look for important names, i.e. an important speaker starts to speak from here
                 important_found = False
@@ -245,20 +262,22 @@ class Sound_Data:
     def get_important_times(self):
         return self.important_times
 
-
+    def get_word_boundaries(self):
+        return self.word_boundaries
 
 
 counter = 0
 for file in os.listdir(DIRECTORY):
     #sonntag, 19:25 gestartet für 300
-    if counter < 11600:
+    if counter < 1:
         filename = os.fsdecode(file)[:-4]
-        new_alignment = Sound_Data(filename)
-        print(DIRECTORY_NAME_MP3 + filename + ".mp3")
 
         new_dir = DIRECTORY_NAME_OUTPUT + filename + "/"
-
         if not os.path.isdir(new_dir):
+
+            new_alignment = Sound_Data(filename)
+            print(DIRECTORY_NAME_MP3 + filename + ".mp3")
+
 
             os.mkdir(new_dir)
 
@@ -274,10 +293,32 @@ for file in os.listdir(DIRECTORY):
             splits = np.array(new_alignment.get_important_times())
             splits = np.multiply(splits, 1000)
 
+            word_boundaries = np.array(new_alignment.get_word_boundaries())
+            word_boundaries = np.multiply(word_boundaries, 1000)
+
             sound_file = AudioSegment.from_mp3(DIRECTORY_NAME_MP3 + filename + ".mp3")
 
             counter2 = 0
 
+            for start, end in word_boundaries:
+                x = start
+                y = end
+
+                #go through list of important times and check if the word boundaries are inside this list.
+                for important_start, important_end in splits:
+                    if x > important_start and y < important_end:
+                        new_file = sound_file[x : y]
+                        new_file.export(dir_wav + str(counter2) + ".wav", format="wav")
+                        os.system("SMILExtract -C emobase2010.conf -I "
+                                  + dir_wav + str(counter2) + ".wav" + " -O "
+                                  + dir_arff + str(counter2) + ".arff" + " -l 0")
+                        counter2 += 1
+
+
+        counter += 1
+
+
+"""
             for start, end in splits:
                 x = start
                 while x < end:
@@ -291,12 +332,9 @@ for file in os.listdir(DIRECTORY):
                     os.system("SMILExtract -C emobase2010.conf -I "
                               + dir_wav + str(counter2) + ".wav" + " -O "
                               + dir_arff + str(counter2) + ".arff" + " -l 0")
-
-
-
                     counter2 += 1
+                    """
         #print(splits)
-        counter += 1
 
         #TODO: Alle mit 0 anschauen. hier steht evtl noch der titel hinter der überschrift. generell alle mit auffällig wenigen
         #TODO: evtl werden auch die important und unimportant names nicht richtig ausgelesen, zb weil zwei "-" hinter einem namen stehen, oder "," oder "&"
