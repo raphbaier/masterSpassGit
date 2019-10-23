@@ -132,6 +132,8 @@ def create_limited_feature_vector(feature_values, feature_indices, label_index):
 
 label_index = get_feature_indices(["emotion"])[0]
 feature_indices = get_feature_indices(features)
+print("OKOK")
+print(len(feature_indices))
 
 x_train, y_train = create_limited_feature_vector(features_data['data'], feature_indices, label_index)
 x_test, y_test = create_limited_feature_vector(test_features_data['data'], feature_indices, label_index)

@@ -269,7 +269,7 @@ class Sound_Data:
 counter = 0
 for file in os.listdir(DIRECTORY):
     #sonntag, 19:25 gestartet für 300
-    if counter < 1:
+    if counter < 1000:
         filename = os.fsdecode(file)[:-4]
 
         new_dir = DIRECTORY_NAME_OUTPUT + filename + "/"
