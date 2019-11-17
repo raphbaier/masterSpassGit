@@ -7,6 +7,8 @@ directory = os.fsencode(directory_name)
 
 
 
+#why not make this good from the beginning? -> transcripts are not uniform, alginments first, then remove the stuff.
+
 for file in os.listdir(directory):
      filename = os.fsdecode(file)
      text_file = directory_name + filename

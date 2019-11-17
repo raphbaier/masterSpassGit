@@ -4,17 +4,17 @@ from pydub import AudioSegment
 import numpy as np
 import Levenshtein
 
-DIRECTORY_NAME_TRANSCRIPTS = "/media/raphael/MasterSpass/masterSpass/scrape/transcripts/"
+DIRECTORY_NAME_TRANSCRIPTS = "/media/raphael/masterspass2/masterSpass/scrape/transcripts/"
 
 DIRECTORY = os.fsencode(DIRECTORY_NAME_TRANSCRIPTS)
 
-DIRECTORY_NAME_ALIGNMENTS = "/media/raphael/MasterSpass/masterSpass/forced_alignment/alignments/"
+DIRECTORY_NAME_ALIGNMENTS = "/media/raphael/masterspass2/masterSpass/forced_alignment/alignments/"
 
 
-DIRECTORY_NAME_MP3 = "/media/raphael/MasterSpass/masterSpass/mp3/"
+DIRECTORY_NAME_MP3 = "/media/raphael/masterspass2/masterSpass/mp3/"
 
 
-DIRECTORY_NAME_OUTPUT = "/media/raphael/MasterSpass/masterSpass/wav_words/"
+DIRECTORY_NAME_OUTPUT = "/media/raphael/masterspass2/masterSpass/wav_words/"
 
 
 DIRECTORY = os.fsencode(DIRECTORY_NAME_MP3)
