@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/masterSpassGit.iml" filepath="$PROJECT_DIR$/.idea/masterSpassGit.iml" />
+      <module fileurl="file://$USER_HOME$/speech_emotion_recognition-master/.idea/speech_emotion_recognition-master.iml" filepath="$USER_HOME$/speech_emotion_recognition-master/.idea/speech_emotion_recognition-master.iml" />
       <module fileurl="file://$USER_HOME$/PycharmProjects/hiwi/.idea/untitled1.iml" filepath="$USER_HOME$/PycharmProjects/hiwi/.idea/untitled1.iml" />
     </modules>
   </component>
