@@ -70,14 +70,13 @@ def speedNpitch(data):
 
 def get_mfcc_from_arff(file):
     # get mfcc features from arff
-    print(file)
     try:
         with open(file) as arff_opened:
-                arff_file = arff.load(arff_opened)
+            arff_file = arff.load(arff_opened)
         arff_opened.close()
     except:
         with open(
-                "/home/raphael/masterSpassGit/model/kaggle_cnn/input_arff/female/disgust/_03-01-07-01-01-01-02.arff") as file2:
+                "/home/raphael/masterSpassGit/model/cnn/input_arff/female/disgust/_03-01-07-01-01-01-02.arff") as file2:
             arff_file = arff.load(file2)
         file2.close()
 
@@ -87,7 +86,6 @@ def get_mfcc_from_arff(file):
 
     last_counter = "0"
     new_mfcc = []
-
     for attribute in arff_file['attributes']:
         attribute_found = False
         if 'mfcc_sma' in attribute[0]:
@@ -98,6 +96,12 @@ def get_mfcc_from_arff(file):
                 attribute_found = True
 
         if attribute_found:
+            if len(arff_file['data']) > 0:
+            #if counter < len(arff_file['data'][0]):
+                new_mfcc.append(arff_file['data'][0][counter])
+            else:
+                return None
+            """
             attributes = attribute[0].replace("]", "[").split("[")
             if attributes[1] != last_counter:
 
@@ -107,8 +111,10 @@ def get_mfcc_from_arff(file):
                 new_mfcc.append(arff_file['data'][0][counter])
 
             else:
-                new_mfcc.append(arff_file['data'][0][counter])
+                new_mfcc.append(arff_file['data'][0][counter])"""
         counter += 1
+    new_mfcc = np.array(new_mfcc)
+    new_mfcc = new_mfcc.reshape((30, 21))
     mfcc_list.append(new_mfcc)
 
     return mfcc_list
@@ -121,7 +127,7 @@ def prepare_data(df, n, aug, mfcc):
 
     print(df)
     print(df.shape[0])
-    X = np.empty(shape=(df.shape[0], n, 216, 1))
+    X = np.empty(shape=(df.shape[0], n, 21, 1))
 
     #meins
     #X = np.empty(shape=(df.shape[0], 30, 21, 1))
@@ -132,60 +138,12 @@ def prepare_data(df, n, aug, mfcc):
     cnt = 0
     for fname in tqdm(df.path):
         file_path = fname
-        data, _ = librosa.load(file_path, sr=sampling_rate
-                               , res_type="kaiser_fast"
-                               , duration=2.5
-                               , offset=0.5
-                               )
-
-        # Random offset / Padding
-        if len(data) > input_length:
-            max_offset = len(data) - input_length
-            offset = np.random.randint(max_offset)
-            data = data[offset:(input_length + offset)]
-        else:
-            if input_length > len(data):
-                max_offset = input_length - len(data)
-                offset = np.random.randint(max_offset)
-            else:
-                offset = 0
-            data = np.pad(data, (offset, int(input_length) - len(data) - offset), "constant")
-
         # Augmentation?
         if aug == 1:
             data = speedNpitch(data)
 
-        # which feature?
-        if mfcc == 1: ## 1
-            # MFCC extraction
-            MFCC = librosa.feature.mfcc(data, sr=sampling_rate, n_mfcc=n_mfcc)
-            MFCC = np.expand_dims(MFCC, axis=-1)
-            X[cnt,] = MFCC
-
-        elif mfcc == 0:
-            #15x21 instead 30x216
-            file = "input_arff/"
-            if "female" in df.labels[cnt]:
-                file += "female/"
-            else:
-                file += "male/"
-            if "happy" in df.labels[cnt]:
-                file += "happy/"
-            if "sad" in df.labels[cnt]:
-                file += "sad/"
-            if "fear" in df.labels[cnt]:
-                file += "fear/"
-            if "disgust" in df.labels[cnt]:
-                file += "disgust/"
-            if "neutral" in df.labels[cnt]:
-                file += "neutral/"
-            if "surprise" in df.labels[cnt]:
-                file += "surprise/"
-            if "angry" in df.labels[cnt]:
-                file += "angry/"
-            file += "_"
-            file += file_path.split("/")[-1].replace(".wav", ".arff")
-            mfccc = get_mfcc_from_arff(file)
+        elif mfcc == 1:
+            mfccc = get_mfcc_from_arff(fname)
             mfccc = np.expand_dims(mfccc, axis=-1)
             X[cnt,] = mfccc
 
@@ -198,7 +156,6 @@ def prepare_data(df, n, aug, mfcc):
 
         cnt += 1
 
-    print(X)
     return X
 
 
@@ -250,10 +207,9 @@ def print_confusion_matrix(confusion_matrix, class_names, figsize=(10, 7), fonts
 
 def get_2d_conv_model(n):
     ''' Create a standard deep 2D convolutional neural network'''
-    nclass = 14
-    inp = Input(shape=(n, 216, 1))  # 2D matrix of 30 MFCC bands by 216 audio length.
-
-    #inp = Input(shape=(n, 21, 1))  # 2D matrix of 30 MFCC bands by 216 audio length.
+    #nclass = 14
+    nclass = 2
+    inp = Input(shape=(n, 21, 1))
 
 
     x = Convolution2D(32, (4, 10), padding="same")(inp)
@@ -290,7 +246,7 @@ def get_2d_conv_model(n):
     out = Dense(nclass, activation=softmax)(x)
     model = models.Model(inputs=inp, outputs=out)
 
-    opt = optimizers.Adam(0.001)
+    opt = optimizers.Adam(0.001) #0.001
     model.compile(optimizer=opt, loss=losses.categorical_crossentropy, metrics=['acc'])
     return model
 
@@ -334,6 +290,39 @@ class get_results:
         model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
         score = model.evaluate(X_test, y_test, verbose=0)
         print("%s: %.2f%%" % (model.metrics_names[1], score[1] * 100))
+    """
+    def confusion_results(self, X_test, y_test, labels, model):
+        '''plot confusion matrix results'''
+        preds = model.predict(X_test,
+                              batch_size=16,
+                              verbose=2)
+        preds = preds.argmax(axis=1)
+        preds = preds.astype(int).flatten()
+        preds = (lb.inverse_transform((preds)))
+
+        actual = y_test.argmax(axis=1)
+        actual = actual.astype(int).flatten()
+        actual = (lb.inverse_transform((actual)))
+
+        classes = labels
+        classes.sort()
+
+        c = confusion_matrix(actual, preds)
+        print("DODA")
+        print(actual)
+        print(preds)
+
+        fig = plt.figure()
+        plt.matshow(c)
+        #plt.title('positive courses vs negative courses')
+        plt.colorbar()
+        plt.ylabel('True Label')
+        plt.xlabel('Predicated Label')
+        plt.savefig('confusion_matrix' + '.pdf')
+
+
+        print_confusion_matrix(c, class_names=classes)"""
+
 
     def confusion_results(self, X_test, y_test, labels, model):
         '''plot confusion matrix results'''
@@ -353,6 +342,16 @@ class get_results:
 
         c = confusion_matrix(actual, preds)
         print_confusion_matrix(c, class_names=classes)
+
+        fig = plt.figure()
+        plt.matshow(c)
+        # plt.title('positive courses vs negative courses')
+        plt.colorbar()
+        plt.ylabel('True Label')
+        plt.xlabel('Predicated Label')
+        plt.savefig('confusion_matrix' + '.pdf')
+
+
 
     def accuracy_results_gender(self, X_test, y_test, labels, model):
         '''Print out the accuracy score and confusion matrix heat map of the Gender classification results'''
@@ -405,21 +404,26 @@ class get_results:
         classes.sort()
 
         c = confusion_matrix(actual, preds)
+
         print(accuracy_score(actual, preds))
         print_confusion_matrix(c, class_names=classes)
 
+#mit nrows schneller
+ref = pd.read_csv("input/arff_data_path_large.csv", nrows=200000) #354895
 
-ref = pd.read_csv("input/Data_path.csv")
 ref.head()
 
+print("OKOK")
+for row in ref:
+    print("WOS")
+    print(row)
 
+print(ref)
 
 
 print("OKOK")
 sampling_rate=44100
 audio_duration=2.5
-n_mfcc = 30
-
 n_mfcc = 30
 
 
@@ -429,11 +433,17 @@ print("OKOKOKOKOKOKOKOK PREPARED")
 print(mfcc)
 
 # Split between train and test
+#X_train, X_test, y_train, y_test = train_test_split(mfcc
+#                                                    , ref.labels
+#                                                    , test_size=0.25
+#                                                    , shuffle=True
+#                                                    , random_state=42
+#                                                   )
+
 X_train, X_test, y_train, y_test = train_test_split(mfcc
                                                     , ref.labels
-                                                    , test_size=0.25
-                                                    , shuffle=True
-                                                    , random_state=42
+                                                    , test_size=0.15
+                                                    , shuffle=False
                                                    )
 
 
@@ -453,22 +463,28 @@ y_test = np_utils.to_categorical(lb.fit_transform(y_test))
 #X_test = (X_test - mean)/std
 
 # Build CNN model
+
+#maybe smaller batchsize
 model = get_2d_conv_model(n=n_mfcc)
 model_history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
-                    batch_size=16, verbose = 2, epochs=20)
+                    batch_size=16, verbose = 2, epochs=300)
 
 
 
 
 results = get_results(model_history,model,X_test,y_test, ref.labels.unique())
+results.confusion_results(X_test, y_test, ref.labels.unique(), model)
+results.create_results(model)
 results.create_plot(model_history)
 print(results.create_results(model))
+print("WIESO NA NET")
 print(results.confusion_results(X_test, y_test, ref.labels.unique(), model))
+results.accuracy_results_gender(X_test, y_test, ref.labels.unique(), model)
 
 save = True
 if save:
     # Save model and weights
-    model_name = 'Emotion_Model_Conv.h5'
+    model_name = 'Emotion_Model_Conv_earnings.h5'
     save_dir = os.path.join(os.getcwd(), 'saved_models')
 
     if not os.path.isdir(save_dir):
@@ -479,5 +495,5 @@ if save:
 
     # Save the model to disk
     model_json = model.to_json()
-    with open("model_json_conv.json", "w") as json_file:
+    with open("model_json_conv_earnings.json", "w") as json_file:
         json_file.write(model_json)

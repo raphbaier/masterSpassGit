@@ -109,6 +109,8 @@ class Sound_Data:
 
         self.sentence_boundaries = []
 
+        self.qanda = 0
+
         in_important_time = False
         important_time = []
 
@@ -141,6 +143,8 @@ class Sound_Data:
         #start time of a sentence
         start_time = 0
 
+        qAndAStarted = False
+
         for word in self.alignment['words']:
 
 
@@ -172,6 +176,16 @@ class Sound_Data:
             if "SENTENCEEND" in transcript_words[position_in_transcript]:
                 sentence_end = True
 
+            if not qAndAStarted:
+                if position_in_transcript + 2 < len(transcript_words):
+                    for i in range(position_in_transcript-2,position_in_transcript+2):
+                        if transcript_words[i] == "Question":
+                            if transcript_words[i+1] == "and":
+                                if transcript_words[i+2] == "Answer":
+                                    if transcript_words[i+3] == "Session":
+                                        if transcript_words[i + 4] == "\n":
+                                            qAndAStarted = True
+
             #print("JETZABER")
             #print(transcrib_word)
             #print(transcript_words[position_in_transcript])
@@ -194,6 +208,9 @@ class Sound_Data:
                     sentence_time.append(end_time)
 
                     if sentence_end:
+                        if qAndAStarted:
+                            self.qanda = sentence_time[0]
+                            qAndAStarted = False
                         self.sentence_boundaries.append(sentence_time)
                         start_time = self.alignment['words'][counter]['end']
 
@@ -324,6 +341,9 @@ class Sound_Data:
     def get_sentence_boundaries(self):
         return self.sentence_boundaries
 
+    def get_qanda(self):
+        return self.qanda
+
 
 counter = 0
 for file in os.listdir(DIRECTORY):
@@ -332,6 +352,98 @@ for file in os.listdir(DIRECTORY):
         filename = os.fsdecode(file)[:-4]
 
         new_dir = DIRECTORY_NAME_OUTPUT + filename + "/"
+
+        if not os.path.isfile(new_dir + "qAndACount.txt") and os.path.isdir(new_dir):
+
+            new_alignment = Sound_Data(filename)
+            print(DIRECTORY_NAME_MP3 + filename + ".mp3")
+
+            dir_wav = new_dir + "wav/"
+            dir_arff = new_dir + "arff/"
+
+            # print(filename)
+            # print(new_alignment.get_names())
+            print(new_alignment.get_important_times())
+
+            speaker_information_list = new_alignment.get_speaker_information_list()
+            print(speaker_information_list)
+
+            splits = np.array(new_alignment.get_important_times())
+            splits = np.multiply(splits, 1000)
+
+            sentence_boundaries = np.array(new_alignment.get_sentence_boundaries())
+            sentence_boundaries = np.multiply(sentence_boundaries, 1000)
+
+            #sound_file = AudioSegment.from_mp3(DIRECTORY_NAME_MP3 + filename + ".mp3")
+
+            counter2 = 0
+            print(sentence_boundaries)
+
+            qAndA = new_alignment.get_qanda() * 1000
+            qAndASet = False
+            print("WTFWTFWTF")
+            print(qAndA)
+
+            for start, end in sentence_boundaries:
+                x = start
+                y = end
+
+                # go through list of important times and check if the word boundaries are inside this list.
+                gender_counter = 0
+                for important_start, important_end in splits:
+                    to_extract = False
+                    if x > important_start and y < important_end:
+                        to_extract = True
+                    elif x > important_start and x < important_end:
+                        y = important_end
+                        to_extract = True
+                    elif y > important_start and y < important_end:
+                        x = important_start
+                        to_extract = True
+
+                    if to_extract:
+                        counter2 += 1
+                    if not qAndASet:
+                        if y > qAndA:
+                            print("WOS")
+                            print(counter2)
+                            qAndASet = True
+
+                            file = open(new_dir + "qAndACount.txt", "w")
+                            file.write(str(counter2))
+                            file.close()
+
+
+
+                    '''
+                    if to_extract:
+                        new_file = sound_file[x: y]
+                        new_file.export(
+                            dir_wav + str(counter2) + "_" + speaker_information_list[gender_counter] + ".wav",
+                            format="wav")
+                        os.system("SMILExtract -C emobase2010.conf -I "
+                                  + dir_wav + str(counter2) + "_" + speaker_information_list[
+                                      gender_counter] + ".wav" + " -O "
+                                  + dir_arff + str(counter2) + "_" + speaker_information_list[
+                                      gender_counter] + ".arff" + " -l 0")
+                        counter2 += 1
+                        '''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        #for sentence alignment
+        """
         if not os.path.isdir(new_dir):
 
             new_alignment = Sound_Data(filename)
@@ -394,7 +506,7 @@ for file in os.listdir(DIRECTORY):
 
 
         counter += 1
-
+"""
 
 """
             for start, end in splits:

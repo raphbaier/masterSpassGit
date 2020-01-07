@@ -5,7 +5,7 @@ import shutil
 
 #this script is for removing the .wav-files to save memory. So far, we only kept them for debugging purposes
 
-FOLDER_TO_REMOVE_PATHS = "/media/raphael/masterspass2/masterSpass/wav_words/"
+FOLDER_TO_REMOVE_PATHS = "/media/raphael/masterspass2/masterSpass/wav_sentences/"
 
 for file in os.listdir(FOLDER_TO_REMOVE_PATHS):
     print(file)

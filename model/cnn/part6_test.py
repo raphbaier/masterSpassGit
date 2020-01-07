@@ -84,7 +84,7 @@ print(len(MFCC[0]))
 
 
 #get mfcc features from arff
-arff_path = "/home/raphael/masterSpassGit/model/kaggle_cnn/input_arff/male/sad/_KL_sa10.arff"
+arff_path = "/home/raphael/masterSpassGit/model/cnn/input_arff/male/sad/_KL_sa10.arff"
 with open(arff_path) as arff_opened:
     arff_file = arff.load(arff_opened)
 arff_opened.close()
