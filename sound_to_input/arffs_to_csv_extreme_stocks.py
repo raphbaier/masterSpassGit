@@ -34,13 +34,13 @@ paths_list_w = []
 #proportion of highest and lowest stocks we want to keep --- 0.5 is the maximum
 proportion = 0.3
 
-onlyQAndA = False
-onlyExtremes = False
-onlyOutliers = False
+onlyQAndA = True
+onlyExtremes = True
+onlyOutliers = True
 
 #Considering the presented numbers at the earnings talk: 0 for not considering, 1 for EPS
 #deviation, 2 for revenue deviation, 3 for year-over-year deviation
-consider_earnings_numbers = 0
+consider_earnings_numbers = 3
 
 #TODO: import aus model
 def get_mfcc_from_arff(file):
@@ -99,7 +99,8 @@ def get_mfcc_from_arff(file):
 counter = 0
 #counter < 100
 for file in os.listdir(arff_files):
-    if 0 < counter < 1400: # 100 < counter < 300
+    print(counter)
+    if 0 < counter < 20000: # 100 < counter < 300
         stock_name = file.split("-")[0]
 
 
@@ -131,8 +132,14 @@ for file in os.listdir(arff_files):
                             with open(arff_files + "/" + file + "/" + "earnings_numbers.txt", "r") as earnings_numbers:
                                 deviations = earnings_numbers.read().split(" ")
                             earnings_numbers.close()
+                            print(deviations)
                             #the deviation from the "normal" stock course
-                            stock_growth = stock_growth - float(deviations[consider_earnings_numbers-1])
+                            if '' in deviations:
+                                deviations.remove('')
+                            try:
+                                stock_growth = stock_growth - float(deviations[consider_earnings_numbers-1])
+                            except:
+                                print("Unknown deviation.")
 
 
                 except KeyError:
@@ -256,12 +263,24 @@ for paths_per_earning in paths_list_m_higher:
         emotion_m.append("POSITIVE")
 
 
+
 stock_arff_df = pd.DataFrame(emotion_m, columns=['labels'])
 stock_arff_df = pd.concat([stock_arff_df, pd.DataFrame(path_m, columns=['path'])], axis=1)
 stock_arff_df.labels.value_counts()
 
+arff_string = ""
+if onlyExtremes:
+    arff_string += "onlyExtremes"
+if onlyOutliers:
+    arff_string += "onlyOutliers"
+if onlyQAndA:
+    arff_string += "onlyQAndA"
+if consider_earnings_numbers != 0:
+    arff_string += "consider" + str(consider_earnings_numbers)
+
+
 stock_arff_df.head()
-stock_arff_df.to_csv("arff_data_path_enhanced_m.csv", mode='w', index=False, header=False)
+stock_arff_df.to_csv("arff_data_m" + arff_string + ".csv", mode='w', index=False, header=False)
 
 
 '''

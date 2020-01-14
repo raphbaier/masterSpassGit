@@ -21,6 +21,8 @@ from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
+import csv
+
 # Other
 from tqdm import tqdm, tqdm_pandas
 import scipy
@@ -45,13 +47,11 @@ import arff
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
-
-TRAINING_PROPORTION = 0.75
-
-
 '''
 1. Data Augmentation method
 '''
+
+###train on male normal set, test on earnings calls
 
 
 def speedNpitch(data):
@@ -72,13 +72,15 @@ def speedNpitch(data):
 2. Extracting the MFCC feature as an image (Matrix format).
 '''
 
-def get_mfcc_from_arff(file):
+def get_mfcc_from_arff(file, phone_sound):
     # get mfcc features from arff
+    print(file)
     try:
         with open(file) as arff_opened:
             arff_file = arff.load(arff_opened)
         arff_opened.close()
     except:
+        print("WOSWOSWOSWSOWSOWSOWSOWSOWSOWSOWSOWSOWSOWOWSOWSOWSO")
         with open(
                 "/home/raphael/masterSpassGit/model/cnn/input_arff/female/disgust/_03-01-07-01-01-01-02.arff") as file2:
             arff_file = arff.load(file2)
@@ -118,7 +120,8 @@ def get_mfcc_from_arff(file):
                 new_mfcc.append(arff_file['data'][0][counter])"""
         counter += 1
     new_mfcc = np.array(new_mfcc)
-    new_mfcc = new_mfcc.reshape((30, 21))
+    if phone_sound:
+        new_mfcc = new_mfcc.reshape((30, 21))
     mfcc_list.append(new_mfcc)
 
     return mfcc_list
@@ -133,21 +136,73 @@ def prepare_data(df, n, aug, mfcc):
     print(df.shape[0])
     X = np.empty(shape=(df.shape[0], n, 21, 1))
 
-    #meins
-    #X = np.empty(shape=(df.shape[0], 30, 21, 1))
-
 
     input_length = sampling_rate * audio_duration
 
     cnt = 0
     for fname in tqdm(df.path):
         file_path = fname
+        #data, _ = librosa.load(file_path, sr=sampling_rate
+         #                      , res_type="kaiser_fast"
+          #                     , duration=2.5
+           #                    , offset=0.5
+            #                   )
+        # Random offset / Padding
+        data = []
+        if len(data) > input_length:
+            max_offset = len(data) - input_length
+            offset = np.random.randint(max_offset)
+            data = data[offset:(input_length + offset)]
+        else:
+            if input_length > len(data):
+                max_offset = input_length - len(data)
+                offset = np.random.randint(max_offset)
+            else:
+                offset = 0
+            data = np.pad(data, (offset, int(input_length) - len(data) - offset), "constant")
+
         # Augmentation?
         if aug == 1:
             data = speedNpitch(data)
 
+        # which feature?
+        if mfcc == 0: ## 1
+            # MFCC extraction
+            MFCC = librosa.feature.mfcc(data, sr=sampling_rate, n_mfcc=n_mfcc)
+            MFCC = np.expand_dims(MFCC, axis=-1)
+            X[cnt,] = MFCC
+
         elif mfcc == 1:
-            mfccc = get_mfcc_from_arff(fname)
+            #15x21 instead 30x216
+            file = "input_arff_telephone/" # _telephone
+            if "female" in df.labels[cnt]:
+                file += "female/"
+            else:
+                file += "male/"
+            if "happy" in df.labels[cnt]:
+                file += "happy/"
+            if "sad" in df.labels[cnt]:
+                file += "sad/"
+            if "fear" in df.labels[cnt]:
+                file += "fear/"
+            if "disgust" in df.labels[cnt]:
+                file += "disgust/"
+            if "neutral" in df.labels[cnt]:
+                file += "neutral/"
+            if "surprise" in df.labels[cnt]:
+                file += "surprise/"
+            if "angry" in df.labels[cnt]:
+                file += "angry/"
+            file += "_"
+            file += file_path.split("/")[-1].replace(".wav", ".arff")
+            mfccc = get_mfcc_from_arff(file, True)
+            mfccc = np.expand_dims(mfccc, axis=-1)
+            X[cnt,] = mfccc
+
+        elif mfcc == 2:
+            #15x21 instead 30x216
+
+            mfccc = get_mfcc_from_arff(fname, False)
             mfccc = np.expand_dims(mfccc, axis=-1)
             X[cnt,] = mfccc
 
@@ -160,6 +215,7 @@ def prepare_data(df, n, aug, mfcc):
 
         cnt += 1
 
+    print(X)
     return X
 
 
@@ -211,9 +267,8 @@ def print_confusion_matrix(confusion_matrix, class_names, figsize=(10, 7), fonts
 
 def get_2d_conv_model(n):
     ''' Create a standard deep 2D convolutional neural network'''
-    #nclass = 14
-    nclass = 2
-    inp = Input(shape=(n, 21, 1))
+    nclass = 7
+    inp = Input(shape=(n, 21, 1))  # 2D matrix of 30 MFCC bands by 216 audio length.
 
 
     x = Convolution2D(32, (4, 10), padding="same")(inp)
@@ -250,7 +305,7 @@ def get_2d_conv_model(n):
     out = Dense(nclass, activation=softmax)(x)
     model = models.Model(inputs=inp, outputs=out)
 
-    opt = optimizers.Adam(0.001) #0.001
+    opt = optimizers.Adam(0.001)
     model.compile(optimizer=opt, loss=losses.categorical_crossentropy, metrics=['acc'])
     return model
 
@@ -294,7 +349,7 @@ class get_results:
         model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
         score = model.evaluate(X_test, y_test, verbose=0)
         print("%s: %.2f%%" % (model.metrics_names[1], score[1] * 100))
-    """
+
     def confusion_results(self, X_test, y_test, labels, model):
         '''plot confusion matrix results'''
         preds = model.predict(X_test,
@@ -312,6 +367,7 @@ class get_results:
         classes.sort()
 
         c = confusion_matrix(actual, preds)
+
         print("DODA")
         print(actual)
         print(preds)
@@ -322,40 +378,10 @@ class get_results:
         plt.colorbar()
         plt.ylabel('True Label')
         plt.xlabel('Predicated Label')
-        plt.savefig('confusion_matrix' + '.pdf')
+        plt.savefig('confusion_matrix_emotions' + '.pdf')
 
 
-        print_confusion_matrix(c, class_names=classes)"""
-
-
-    def confusion_results(self, X_test, y_test, labels, model):
-        '''plot confusion matrix results'''
-        preds = model.predict(X_test,
-                              batch_size=16,
-                              verbose=2)
-        preds = preds.argmax(axis=1)
-        preds = preds.astype(int).flatten()
-        preds = (lb.inverse_transform((preds)))
-
-        actual = y_test.argmax(axis=1)
-        actual = actual.astype(int).flatten()
-        actual = (lb.inverse_transform((actual)))
-
-        classes = labels
-        classes.sort()
-
-        c = confusion_matrix(actual, preds)
         print_confusion_matrix(c, class_names=classes)
-
-        fig = plt.figure()
-        plt.matshow(c)
-        # plt.title('positive courses vs negative courses')
-        plt.colorbar()
-        plt.ylabel('True Label')
-        plt.xlabel('Predicated Label')
-        plt.savefig('confusion_matrix' + '.pdf')
-
-
 
     def accuracy_results_gender(self, X_test, y_test, labels, model):
         '''Print out the accuracy score and confusion matrix heat map of the Gender classification results'''
@@ -373,14 +399,7 @@ class get_results:
 
         # print(accuracy_score(actual, preds))
 
-        actual = pd.DataFrame(actual).replace({'female_angry': 'female'
-                                                  , 'female_disgust': 'female'
-                                                  , 'female_fear': 'female'
-                                                  , 'female_happy': 'female'
-                                                  , 'female_sad': 'female'
-                                                  , 'female_surprise': 'female'
-                                                  , 'female_neutral': 'female'
-                                                  , 'male_angry': 'male'
+        actual = pd.DataFrame(actual).replace({ 'male_angry': 'male'
                                                   , 'male_fear': 'male'
                                                   , 'male_happy': 'male'
                                                   , 'male_sad': 'male'
@@ -388,14 +407,7 @@ class get_results:
                                                   , 'male_neutral': 'male'
                                                   , 'male_disgust': 'male'
                                                })
-        preds = pd.DataFrame(preds).replace({'female_angry': 'female'
-                                                , 'female_disgust': 'female'
-                                                , 'female_fear': 'female'
-                                                , 'female_happy': 'female'
-                                                , 'female_sad': 'female'
-                                                , 'female_surprise': 'female'
-                                                , 'female_neutral': 'female'
-                                                , 'male_angry': 'male'
+        preds = pd.DataFrame(preds).replace({ 'male_angry': 'male'
                                                 , 'male_fear': 'male'
                                                 , 'male_happy': 'male'
                                                 , 'male_sad': 'male'
@@ -408,17 +420,15 @@ class get_results:
         classes.sort()
 
         c = confusion_matrix(actual, preds)
-
         print(accuracy_score(actual, preds))
         print_confusion_matrix(c, class_names=classes)
 
-#mit nrows schneller
-ref = pd.read_csv("input/csv_for_earnings_learning/arff_data_m.csv") #354895
 
-ref.columns = ['labels', 'path']
+ref = pd.read_csv("input/Data_path_male.csv")
+ref.head()
 
-print(ref)
 
+print("OKOK")
 sampling_rate=44100
 audio_duration=2.5
 n_mfcc = 30
@@ -430,60 +440,22 @@ print("OKOKOKOKOKOKOKOK PREPARED")
 print(mfcc)
 
 # Split between train and test
-#X_train, X_test, y_train, y_test = train_test_split(mfcc
-#                                                    , ref.labels
-#                                                    , test_size=0.25
-#                                                    , shuffle=True
-#                                                    , random_state=42
-#                                                   )
+X_train, X_test, y_train, y_test = train_test_split(mfcc
+                                                    , ref.labels
+                                                    , test_size=0.25
+                                                    , shuffle=True
+                                                    , random_state=42
+                                                   )
 
-###fuer negativbeispiel einfach das da
-#X_train, X_test, Y_train, Y_test = train_test_split(mfcc
-##                                                    , ref.labels
-#                                                    , test_size=0.15
-#                                                    , shuffle=True
-#                                                   )
-
-
-#print(X_train.shape)
-
-#get last NEGATIVe index
-
-counter = 0
-last_negative = counter
-for label in ref.labels:
-    if label == "NEGATIVE":
-        last_negative = counter
-    counter += 1
-
-X_pos, X_neg = np.split(mfcc, [last_negative])
-Y_pos, Y_neg = np.split(ref.labels, [last_negative])
-print(X_pos.shape)
-print(X_neg.shape)
-print(len(X_pos))
-print(Y_pos.shape)
-print(Y_neg.shape)
-print(len(Y_pos))
-
-train_index_pos = int(TRAINING_PROPORTION * len(Y_pos))
-train_index_neg = int(TRAINING_PROPORTION * len(Y_neg))
-
-X_pos_train, X_pos_test = np.split(X_pos, [train_index_pos])
-Y_pos_train, Y_pos_test = np.split(Y_pos, [train_index_pos])
-X_neg_train, X_neg_test = np.split(X_neg, [train_index_neg])
-Y_neg_train, Y_neg_test = np.split(Y_neg, [train_index_neg])
-
-X_train = np.concatenate((X_pos_train, X_neg_train))
-Y_train = np.concatenate((Y_pos_train, Y_neg_train))
-X_test = np.concatenate((X_pos_test, X_neg_test))
-Y_test = np.concatenate((Y_pos_test, Y_neg_test))
-
+print("WOSWOSWOWOWSOWOSOWOSOWOSOWOS")
+print(X_train.shape)
+print(X_test.shape)
 
 
 # one hot encode the target
 lb = LabelEncoder()
-y_train = np_utils.to_categorical(lb.fit_transform(Y_train))
-y_test = np_utils.to_categorical(lb.fit_transform(Y_test))
+y_train = np_utils.to_categorical(lb.fit_transform(y_train))
+y_test = np_utils.to_categorical(lb.fit_transform(y_test))
 
 # Normalization as per the standard NN process
 
@@ -496,52 +468,105 @@ y_test = np_utils.to_categorical(lb.fit_transform(Y_test))
 #X_test = (X_test - mean)/std
 
 # Build CNN model
-
-#maybe smaller batchsize
 model = get_2d_conv_model(n=n_mfcc)
 model_history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
-                    batch_size=16, verbose = 2, epochs=100)
+                    batch_size=16, verbose = 2, epochs=200)
 
 
 
 
 results = get_results(model_history,model,X_test,y_test, ref.labels.unique())
-results.confusion_results(X_test, y_test, ref.labels.unique(), model)
-#print(model.predict(X_test))
-#print(y_test) # [0 1] bedeutet positiv
-
-predicted_label = []
-true_label = []
-
-for label in model.predict(X_test):
-    if label[1] > label[0]:
-        predicted_label.append(1)
-    else:
-        predicted_label.append(0)
-for label in y_test:
-    if label[1] > label[0]:
-        true_label.append(1) # 1 bedeutet positiv
-    else:
-        true_label.append(0)
-print(predicted_label)
-print(true_label)
-
-cm = np.zeros((2, 2), dtype=int)
-np.add.at(cm, [predicted_label, true_label], 1)
-print(cm)
-
-
-results.create_results(model)
 results.create_plot(model_history)
 print(results.create_results(model))
-print("WIESO NA NET")
 print(results.confusion_results(X_test, y_test, ref.labels.unique(), model))
-results.accuracy_results_gender(X_test, y_test, ref.labels.unique(), model)
+
+
+colnames = ['labels', 'path']
+ref = pd.read_csv("input/arff_data_m.csv", names=colnames)
+
+new_file = []
+new_file.append(["labels", "path", "angry", "fear", "happy", "sad", "surprise", "neutral", "disgust"])
+
+#######Go through them 1 by 1
+with open("input/arff_data_m.csv", "r") as reff:
+    counter = 0
+    for line in reff.readlines():
+        #if counter < 100:
+            reff_info = line.split(",")
+
+            add_to_file = []
+            add_to_file.append(reff_info[0])
+            add_to_file.append(reff_info[1][:-1])
+            feature = get_mfcc_from_arff(reff_info[1][:-1], False)
+            feature = np.array(feature)
+            try:
+                feature = feature.reshape((1, 30, 21, 1))
+
+                preds = model.predict(feature)
+                for pred in preds[0]:
+                    add_to_file.append(pred)
+                new_file.append(add_to_file)
+            except:
+                print("Couldn't reshape array.")
+        #counter += 1
+
+reff.close()
+
+#output speichern
+with open("outputTEST.csv", "w", newline="") as output:
+    writer = csv.writer(output)
+    writer.writerows(new_file)
+output.close()
+print("DONW")
+
+
+colnames = ['labels', 'path']
+ref = pd.read_csv("input/arff_data_m.csv", names=colnames)
+ref.head()
+
+ref = ref.loc[ref["labels"] == "NEGATIVE"]
+mfcc = prepare_data(ref, n = n_mfcc, aug = 0, mfcc = 2)
+X_train, X_test, y_train, y_test = train_test_split(mfcc
+                                                    , ref.labels
+                                                    , test_size=1
+                                                    , shuffle=True
+                                                    , random_state=42
+                                                   )
+
+preds = model.predict(X_test,
+                              batch_size=16,
+                              verbose=2)
+print("NEGATIVE")
+print(preds)
+
+
+colnames = ['labels', 'path']
+ref = pd.read_csv("input/arff_data_m.csv", names=colnames)
+ref.head()
+
+ref = ref.loc[ref["labels"] == "POSITIVE"]
+mfcc = prepare_data(ref, n = n_mfcc, aug = 0, mfcc = 2)
+X_train, X_test, y_train, y_test = train_test_split(mfcc
+                                                    , ref.labels
+                                                    , test_size=1
+                                                    , shuffle=True
+                                                    , random_state=42
+                                                   )
+
+
+
+preds = model.predict(X_test,
+                              batch_size=16,
+                              verbose=2)
+print("POSITIVE")
+print(preds)
+
+
 
 save = True
 if save:
     # Save model and weights
-    model_name = 'Emotion_Model_Conv_earnings.h5'
+    model_name = 'Emotion_Model_Conv.h5'
     save_dir = os.path.join(os.getcwd(), 'saved_models')
 
     if not os.path.isdir(save_dir):
@@ -552,5 +577,5 @@ if save:
 
     # Save the model to disk
     model_json = model.to_json()
-    with open("model_json_conv_earnings.json", "w") as json_file:
+    with open("model_json_conv.json", "w") as json_file:
         json_file.write(model_json)
