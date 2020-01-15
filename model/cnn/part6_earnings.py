@@ -49,6 +49,16 @@ if not sys.warnoptions:
 TRAINING_PROPORTION = 0.75
 
 
+
+def unison_shuffled_copies(a, b):
+    indices = np.arange(a.shape[0])
+    np.random.shuffle(indices)
+
+    a = a[indices]
+    b = b[indices]
+    return a, b
+
+
 '''
 1. Data Augmentation method
 '''
@@ -79,6 +89,7 @@ def get_mfcc_from_arff(file):
             arff_file = arff.load(arff_opened)
         arff_opened.close()
     except:
+        print("File not found.")
         with open(
                 "/home/raphael/masterSpassGit/model/cnn/input_arff/female/disgust/_03-01-07-01-01-01-02.arff") as file2:
             arff_file = arff.load(file2)
@@ -234,11 +245,11 @@ def get_2d_conv_model(n):
     x = MaxPool2D()(x)
     x = Dropout(rate=0.2)(x)
 
-    x = Convolution2D(32, (4, 10), padding="same")(x)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
-    x = MaxPool2D()(x)
-    x = Dropout(rate=0.2)(x)
+    #x = Convolution2D(32, (4, 10), padding="same")(x)
+    #x = BatchNormalization()(x)
+    #x = Activation("relu")(x)
+    #x = MaxPool2D()(x)
+    #x = Dropout(rate=0.2)(x)
 
     x = Flatten()(x)
     x = Dense(64)(x)
@@ -414,6 +425,10 @@ class get_results:
 
 #mit nrows schneller
 ref = pd.read_csv("input/csv_for_earnings_learning/arff_data_m.csv") #354895
+#ref = pd.read_csv("input/csv_for_earnings_learning/test.csv") #354895
+
+
+
 
 ref.columns = ['labels', 'path']
 
@@ -492,6 +507,9 @@ y_test = np_utils.to_categorical(lb.fit_transform(Y_test))
 #mean = np.mean(X_train, axis=0)
 #std = np.std(X_train, axis=0)
 
+#shuffle training data
+X_train, y_train = unison_shuffled_copies(X_train, y_train)
+
 #X_train = (X_train - mean)/std
 #X_test = (X_test - mean)/std
 
@@ -500,7 +518,7 @@ y_test = np_utils.to_categorical(lb.fit_transform(Y_test))
 #maybe smaller batchsize
 model = get_2d_conv_model(n=n_mfcc)
 model_history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
-                    batch_size=16, verbose = 2, epochs=100)
+                    batch_size=64, verbose = 2, epochs=10)
 
 
 
