@@ -6,6 +6,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="untitled1" />
     <orderEntry type="module" module-name="speech_emotion_recognition-master" />
+    <orderEntry type="module" module-name="masterSpassClean" />
   </component>
   <component name="TestRunnerService">
     <option name="projectConfiguration" value="Twisted Trial" />
